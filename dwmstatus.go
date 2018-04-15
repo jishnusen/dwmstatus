@@ -112,7 +112,7 @@ func colored(icon string, percentage int) string {
 func updatePower() string {
 	const powerSupply = "/sys/class/power_supply/"
 	var enFull, enNow, enPerc int = 0, 0, 0
-	var plugged, err = ioutil.ReadFile(powerSupply + "BAT0/online")
+	var plugged, err = ioutil.ReadFile(powerSupply + "ADP1/online")
 	if err != nil {
 		return err.Error()
 	}
@@ -240,7 +240,7 @@ func main() {
 				updateNetUse(),
 				updateCPUUse() + "%",
 				updateMemUse() + "%",
-				updatePower() + "%",
+				updatePower(),
 				time.Now().Local().Format("Monday January 02  3:04:05 PM"),
 			}
 		} else {
