@@ -21,11 +21,15 @@ const (
 	unpluggedSign = "☢"
 	pluggedSign   = "⚡"
 
+    brightnessSign = "☀"
+
 	cpuSign = "CPU"
 	memSign = "MEM"
 
 	netReceivedSign    = "RX "
 	netTransmittedSign = "TX "
+
+    volSign = "🔊"
 
 	floatSeparator = ""
 	dateSeparator  = ""
@@ -112,7 +116,7 @@ func colored(icon string, percentage int) string {
 func updatePower() string {
 	const powerSupply = "/sys/class/power_supply/"
 	var enFull, enNow, enPerc int = 0, 0, 0
-	var plugged, err = ioutil.ReadFile(powerSupply + "ADP1/online")
+	var plugged, err = ioutil.ReadFile(powerSupply + "AC0/online")
 	if err != nil {
 		return err.Error()
 	}
@@ -166,6 +170,25 @@ func updatePower() string {
 	return fmt.Sprintf("%s%3d", icon, enPerc) + "%"
 }
 
+func updateBrightness() string {
+	readval := func(name string) float64 {
+		var path = "/sys/class/backlight/intel_backlight/device/intel_backlight/" + name
+		var file []byte
+		if tmp, err := ioutil.ReadFile(path); err == nil {
+			file = tmp
+		} else {
+			return -1
+		}
+
+		if ret, err := strconv.ParseFloat(strings.TrimSpace(string(file)), 32); err == nil {
+			return ret
+		}
+		return -2
+	}
+
+	return fmt.Sprintf("%s %.0f", brightnessSign, (readval("brightness")/readval("max_brightness")) * 100) + "%"
+}
+
 // updateCPUUse reads the last minute sysload and scales it to the core count
 func updateCPUUse() string {
 	var load float32
@@ -214,6 +237,29 @@ func updateMemUse() string {
 	return colored(memSign, used*100/total)
 }
 
+func updateVolume() string {
+    out, err := exec.Command("/home/jishnu/bin/volume.sh").Output()
+    if err != nil {
+        return volSign + "ERR"
+    }
+    var vol = strings.TrimSpace(string(out))
+    return volSign + " " + vol + "%"
+}
+
+func updateCapsLck() string {
+    out, err := exec.Command("/home/jishnu/bin/caps.sh").Output()
+    if err != nil {
+        return "ERR"
+    }
+    var caps = ""
+    if strings.TrimSpace(string(out)) == "off" {
+        caps = "a"
+    } else {
+        caps = "A"
+    }
+    return caps
+}
+
 func IsEmpty(name string) bool {
 	f, err := os.Open(name)
 	if err != nil {
@@ -241,6 +287,9 @@ func main() {
 				updateCPUUse() + "%",
 				updateMemUse() + "%",
 				updatePower(),
+                updateBrightness(),
+                updateVolume(),
+                updateCapsLck(),
 				time.Now().Local().Format("Monday January 02  3:04:05 PM"),
 			}
 		} else {
